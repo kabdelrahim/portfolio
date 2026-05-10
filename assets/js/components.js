@@ -33,7 +33,7 @@
     '</div>';
 
   const footerEl = document.createElement('footer');
-  footerEl.className = 'bg-gray-800 mt-20 py-4 text-center text-gray-500 text-sm';
+  footerEl.className = 'bg-gray-800 py-4 text-center text-gray-500 text-sm';
   footerEl.innerHTML =
     '© 2025 ABDELRAHIM SALEH Karim — Portfolio Développeur | ' +
     '<a href="' + base + 'legal/mentions.html" class="hover:text-blue-400">Mentions légales</a>';
