@@ -8,6 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
     <style>
       body { font-family: 'Fira Code', monospace; }
+      .project-card { transition: opacity 0.2s, transform 0.2s; }
+      .project-card.hidden-card { opacity: 0; pointer-events: none; position: absolute; }
     </style>
   </head>
   <body class="bg-gray-900 text-gray-100 flex flex-col min-h-screen" data-page="projects">
@@ -15,44 +17,150 @@
 
     <main class="flex-grow pt-32 px-6">
       <section class="max-w-5xl mx-auto">
-        <h2 class="text-3xl font-bold text-blue-400 mb-6">Mes projets</h2>
-        <p class="text-gray-300 mb-10">Voici quelques-uns des projets réalisés durant ma formation, mes stages ou à titre personnel. Chaque projet est résumé avec son contexte, les technologies utilisées et les compétences mobilisées.</p>
+        <h2 class="text-3xl font-bold text-blue-400 mb-3">Mes projets</h2>
+        <p class="text-gray-400 mb-8">Projets réalisés en stage, en cours (AP) ou à titre personnel.</p>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div class="bg-gray-800 rounded-lg shadow p-5">
-            <h3 class="text-xl font-bold text-blue-300 mb-2">Site Ingea</h3>
-            <p class="text-gray-400 mb-2">Contexte : Site réalisé en entreprise via maquette fournie.</p>
-            <p class="text-gray-400 mb-2">Technologies : WordPress, Elementor, CSS personnalisé</p>
-            <p class="text-gray-400 mb-2">Compétences : Intégration, responsive, ACF, maintenance</p>
-          </div>
+        <!-- Filtres -->
+        <div id="filters" class="flex flex-wrap gap-3 mb-10"></div>
 
-          <div class="bg-gray-800 rounded-lg shadow p-5">
-            <h3 class="text-xl font-bold text-blue-300 mb-2">Site Domaine Luneau-Papin</h3>
-            <p class="text-gray-400 mb-2">Contexte : Site en cours de finalisation, adapté pour mobile et client exigeant.</p>
-            <p class="text-gray-400 mb-2">Technologies : WordPress, Elementor, ACF</p>
-            <p class="text-gray-400 mb-2">Compétences : Mise en page complexe, interactions dynamiques</p>
-          </div>
+        <!-- Grille -->
+        <div id="projects-grid" class="relative grid grid-cols-1 md:grid-cols-2 gap-6"></div>
 
-          <div class="bg-gray-800 rounded-lg shadow p-5">
-            <h3 class="text-xl font-bold text-blue-300 mb-2">Page d'accueil site ATTILA</h3>
-            <p class="text-gray-400 mb-2">Contexte : Projet d'avant-vente, création visuelle de la page d'accueil.</p>
-            <p class="text-gray-400 mb-2">Technologies : WordPress, CSS, design adaptatif</p>
-            <p class="text-gray-400 mb-2">Compétences : Intégration de formes décoratives, adaptabilité responsive</p>
-          </div>
-
-          <div class="bg-gray-800 rounded-lg shadow p-5">
-            <h3 class="text-xl font-bold text-blue-300 mb-2">Bot Discord personnalisé</h3>
-            <p class="text-gray-400 mb-2">Contexte : Projet personnel pour automatiser des messages selon les rôles sur serveur Discord.</p>
-            <p class="text-gray-400 mb-2">Technologies : Node.js, Discord.js, Render</p>
-            <p class="text-gray-400 mb-2">Compétences : Programmation JS, API, hébergement cloud</p>
-            <a href="https://github.com/kabdelrahim/gambling-pin" target="_blank" class="text-blue-400 underline">Voir sur GitHub</a>
-          </div>
-        </div>
+        <!-- Message aucun résultat -->
+        <p id="no-results" class="hidden text-gray-500 text-center py-10">Aucun projet pour ce filtre.</p>
       </section>
     </main>
 
     <div id="footer-placeholder"></div>
 
     <script src="../assets/js/components.js"></script>
+    <script>
+      /* =====================================================
+         DONNÉES — ajouter un projet ici suffit
+         tags disponibles : "stage" | "ap" | "perso"
+         ===================================================== */
+      const projects = [
+        {
+          title: "Site Ingea",
+          context: "Site réalisé en entreprise via maquette fournie.",
+          techs: ["WordPress", "Elementor", "CSS"],
+          skills: ["Intégration", "Responsive", "ACF", "Maintenance"],
+          tags: ["stage"],
+          link: null,
+        },
+        {
+          title: "Site Domaine Luneau-Papin",
+          context: "Site en cours de finalisation, adapté pour mobile et client exigeant.",
+          techs: ["WordPress", "Elementor", "ACF"],
+          skills: ["Mise en page complexe", "Interactions dynamiques"],
+          tags: ["stage"],
+          link: null,
+        },
+        {
+          title: "Page d'accueil site ATTILA",
+          context: "Projet d'avant-vente, création visuelle de la page d'accueil.",
+          techs: ["WordPress", "CSS"],
+          skills: ["Intégration", "Responsive", "Design adaptatif"],
+          tags: ["stage"],
+          link: null,
+        },
+        {
+          title: "Bot Discord personnalisé",
+          context: "Automatisation de messages selon les rôles sur un serveur Discord.",
+          techs: ["Node.js", "Discord.js", "Render"],
+          skills: ["Programmation JS", "API", "Hébergement cloud"],
+          tags: ["perso"],
+          link: "https://github.com/kabdelrahim/gambling-pin",
+        },
+      ];
+
+      /* =====================================================
+         CONFIG DES TAGS
+         ===================================================== */
+      const TAG_CONFIG = {
+        stage: { label: "Stage",  color: "bg-amber-500/20 text-amber-400 border border-amber-500/40" },
+        ap:    { label: "AP",     color: "bg-purple-500/20 text-purple-400 border border-purple-500/40" },
+        perso: { label: "Perso",  color: "bg-green-500/20 text-green-400 border border-green-500/40"  },
+      };
+
+      /* =====================================================
+         RENDU
+         ===================================================== */
+      let activeFilter = "all";
+
+      function tagBadge(tag) {
+        const cfg = TAG_CONFIG[tag] || { label: tag, color: "bg-gray-700 text-gray-300" };
+        return `<span class="text-xs px-2 py-0.5 rounded-full ${cfg.color}">${cfg.label}</span>`;
+      }
+
+      function renderCard(project) {
+        const techList = project.techs.map(t => `<span class="text-xs bg-gray-700 px-2 py-0.5 rounded">${t}</span>`).join(" ");
+        const badges   = project.tags.map(tagBadge).join(" ");
+        const linkHTML = project.link
+          ? `<a href="${project.link}" target="_blank" rel="noopener" class="mt-4 inline-block text-blue-400 hover:underline text-sm">Voir sur GitHub →</a>`
+          : "";
+
+        const card = document.createElement("div");
+        card.className = "project-card bg-gray-800 rounded-xl shadow p-5 flex flex-col";
+        card.dataset.tags = project.tags.join(",");
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2 mb-3">
+            <h3 class="text-lg font-bold text-blue-300">${project.title}</h3>
+            <div class="flex gap-1 flex-shrink-0">${badges}</div>
+          </div>
+          <p class="text-gray-400 text-sm mb-3">${project.context}</p>
+          <div class="flex flex-wrap gap-1 mb-2">${techList}</div>
+          <p class="text-gray-500 text-xs mt-auto pt-3">${project.skills.join(" · ")}</p>
+          ${linkHTML}`;
+        return card;
+      }
+
+      function applyFilter(tag) {
+        activeFilter = tag;
+        const cards = document.querySelectorAll(".project-card");
+        let visible = 0;
+        cards.forEach(card => {
+          const tags = card.dataset.tags.split(",");
+          const show = tag === "all" || tags.includes(tag);
+          card.classList.toggle("hidden-card", !show);
+          if (show) visible++;
+        });
+        document.getElementById("no-results").classList.toggle("hidden", visible > 0);
+
+        document.querySelectorAll(".filter-btn").forEach(btn => {
+          const active = btn.dataset.filter === tag;
+          btn.className = btn.className
+            .replace(/bg-blue-500 text-white|bg-gray-800 text-gray-400 hover:text-white/g, "")
+            .trim();
+          btn.className += active
+            ? " bg-blue-500 text-white"
+            : " bg-gray-800 text-gray-400 hover:text-white";
+        });
+      }
+
+      function renderFilters() {
+        const allTags = [...new Set(projects.flatMap(p => p.tags))];
+        const filters = [{ key: "all", label: "Tous" }, ...allTags.map(t => ({ key: t, label: TAG_CONFIG[t]?.label || t }))];
+
+        const container = document.getElementById("filters");
+        filters.forEach(({ key, label }) => {
+          const btn = document.createElement("button");
+          btn.dataset.filter = key;
+          btn.className = "filter-btn px-4 py-1.5 rounded-full text-sm font-medium transition-colors";
+          btn.textContent = label;
+          btn.addEventListener("click", () => applyFilter(key));
+          container.appendChild(btn);
+        });
+      }
+
+      function init() {
+        const grid = document.getElementById("projects-grid");
+        projects.forEach(p => grid.appendChild(renderCard(p)));
+        renderFilters();
+        applyFilter("all");
+      }
+
+      init();
+    </script>
   </body>
 </html>
